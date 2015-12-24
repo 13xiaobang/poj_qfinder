@@ -116,8 +116,8 @@ if __name__=='__main__':
         user_id, pwd, pid, lang, src, = sys.argv[1:]
         src = open(src,'r').read()
     else:  
-        user_id = '13xiaobang'
-        pwd = '198789198789'
+        user_id = 'username'
+        pwd = 'passwd'
         pid = 1000
         lang = 'gcc'
         src = '''
