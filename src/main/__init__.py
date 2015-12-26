@@ -7,18 +7,20 @@ from time import sleep
 import codecs
 import urllib,urllib2,cookielib
 from bs4 import BeautifulSoup
+from inspect import strseq
 
 class Question():
     id = ''
-    def __init__(self, id, name, percent, ac, total, last_update):
+    def __init__(self, id, name, percent, ac, total, last_update, page):
         self.id = id
         self.name = name
         self.percent = percent
         self.ac = ac
         self.total = total
         self.last_update = last_update
+        self.page = page
     def print_question(self):
-        print "%-10s%-40s%.2f%%(%7s/%7s)%50s" %(self.id,self.name,self.percent*100,self.ac,self.total,self.last_update)
+        print "%-10s%-40s%.2f%%(%7s/%7s)%20spage:%10s" %(self.id,self.name,self.percent*100,self.ac,self.total,self.last_update,page)
 
 class POJ:
     URL_HOME = 'http://poj.org/'
@@ -103,15 +105,19 @@ class POJ:
 #             print POJ.INFO[i],':',result[num[i]][1:-1]
 #         return True
 def save_result(result_list):
-    wfile=codecs.open("result.dat", 'a', 'utf-8')
+    wfile=codecs.open("result.dat", 'w', 'utf-8')
     size=len(result_list)
     for i in result_list:
-        wfile.write("%-10s%-40s%.2f%%(%7s/%7s)%50s\n" %(i.id,i.name,i.percent*100,i.ac,i.total,i.last_update))
+        wfile.write("%s:%-10s%-70s%.2f%%(%7s/%7s)%15s\n" %(i.id,i.page,i.name,i.percent*100,i.ac,i.total,i.last_update))
     wfile.close()
 
+def cal_len(gen_strs):
+    a = 0
+    for i in gen_strs:
+        a+=1
+    return a
+
 if __name__=='__main__':
-    FORMAT = '----%(message)s----'
-    logging.basicConfig(level=logging.INFO,format = FORMAT)
     if len(sys.argv) > 1: 
         user_id, pwd, pid, lang, src, = sys.argv[1:]
         src = open(src,'r').read()
@@ -147,26 +153,27 @@ if __name__=='__main__':
     page = 0
     while 1:
         page += 1
-        #page=17
-        print"read page %d.." %page        
+        #page=28
         str = poj.getVolumn(page)
         if str.find("problem_id")< 0:
             print "find end page is %d" %(page-1)
             break
+        print"page %d.." %page
         soup = BeautifulSoup(str)
         tr_tags = soup.findAll('tr', align='center')
         for tr in tr_tags:
             i=0
+            st_len = cal_len(tr.strings)
             for st in tr.strings:
                 if(i==0):
                     ID=st.string
                 elif(i==1):
                     NAME=st.string
-                elif(i==3):
+                elif(i==st_len-5):
                     AC=st.string
-                elif(i==5):
+                elif(i==st_len-3):
                     TOTAL=st.string
-                elif(i==7):
+                elif(i==st_len-1):
                     LAST_UPDATE=st.string
                 i += 1
             try:
@@ -180,8 +187,8 @@ if __name__=='__main__':
             
                 
             #print "%.2f%%" %(PER*100)
-            q_list.append(Question(ID,NAME,PER,AC,TOTAL,LAST_UPDATE))
-        sleep(3)
+            q_list.append(Question(ID,NAME,PER,AC,TOTAL,LAST_UPDATE,page))
+        sleep(1)
         #break
 #     new_q = Question(21, "a加3","324%", "234234", "1234245", "2015-12-24")
 #     q_list = list()
