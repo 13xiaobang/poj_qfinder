@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*- 
-
 import re
 import sys
 import logging
+import time
 from time import sleep
 import codecs
 import urllib,urllib2,cookielib
 from bs4 import BeautifulSoup
 from inspect import strseq
+import ConfigParser
+from ConfigParser import ConfigParser
+import string, os, sys
 
 class Question():
     id = ''
@@ -67,50 +70,34 @@ class POJ:
         except:
             print 'login failed'
             return False
-
-#     def submit(self,pid,language,src):
-#         submit_data = dict(
-#                 problem_id = pid,
-#                 language = POJ.LANGUAGE[language.upper()],
-#                 source = src,
-#                 submit = 'Submit',)
-#         postdata2 = urllib.urlencode(submit_data)
-#         try:
-#             req2 = urllib2.Request(POJ.URL_SUBMIT,data = postdata2)
-#             res = self.opener.open(POJ.URL_SUBMIT,postdata2).read()
-#             logging.info('submit successful')
-#             return True
-#         except:
-#             logging.error('submit error')
-#             return False
+        
     def getVolumn(self, num):
         url=self.URL_HOME + 'problemlist?volume=%d' % num
         return urllib2.urlopen(url).read()
-        
-#     def result(self,user_id):
-#         url = POJ.URL_STATUS + urllib.urlencode({'user_id':user_id})
-#         page = urllib2.urlopen(url)
-#         soup = BeautifulSoup(page)
-#         table = soup.findAll('table',{'class':'a'}) 
-#         pattern = re.compile(r'>[-+: \w]*<')  
-#         result = pattern.findall(str(table))
-#         wait = ['Running & Judging','Compiling','Waiting']
-#         for i in range(3):
-#             if result[32][1:-1]==wait[i] or result[32][1:-1] == '':
-#                 logging.info(result[32])
-#                 sleep(1)
-#                 return False
-#         num = [21,24,28,32,35,37,40,43,45]
-#         for i in range(9):
-#             print POJ.INFO[i],':',result[num[i]][1:-1]
-#         return True
-def save_result(result_list):
-    wfile=codecs.open("result.dat", 'w', 'utf-8')
-    size=len(result_list)
-    for i in result_list:
-        wfile.write("%s:%-10s%-70s%.2f%%(%7s/%7s)%15s\n" %(i.id,i.page,i.name,i.percent*100,i.ac,i.total,i.last_update))
-    wfile.close()
+    
+    def getUserState(self):
+        url=self.URL_HOME + 'userstatus?user_id=%s' %self.user_id
+        return urllib2.urlopen(url).read()
+    
+def id_in_list(this_list, id):
+    for ele in this_list:
+        if(ele == id):
+            return True
+    return False
 
+def save_result(result_list, user_done_list):
+    timeArray = time.localtime(int(time.time()))
+    filename = time.strftime("%Y-%m-%d_%H_%M_%S", timeArray)
+    filename += ".dat"
+    wfile=codecs.open(filename, 'w', 'utf-8')
+    for i in result_list:
+        if(id_in_list(user_done_list, i.id)):
+            wfile.write("*%s:%-9s%-70s%.2f%%(%7s/%7s)%15s\n" %(i.id,i.page,i.name,i.percent*100,i.ac,i.total,i.last_update))
+        else:
+            wfile.write("%s:%-10s%-70s%.2f%%(%7s/%7s)%15s\n" %(i.id,i.page,i.name,i.percent*100,i.ac,i.total,i.last_update))
+    wfile.close()
+    print"save result to %s" %filename
+    
 def cal_len(gen_strs):
     a = 0
     for i in gen_strs:
@@ -118,38 +105,20 @@ def cal_len(gen_strs):
     return a
 
 if __name__=='__main__':
-    if len(sys.argv) > 1: 
-        user_id, pwd, pid, lang, src, = sys.argv[1:]
-        src = open(src,'r').read()
-    else:  
-        user_id = 'username'
-        pwd = 'passwd'
-        pid = 1000
-        lang = 'gcc'
-        src = '''
-        #include<stdio.h>
-        int main()
-        {
-            int a,b;
-            scanf("%d%d",&a,&b);
-            printf("%d",a+b);
-            return 0;
-        }
-        '''
+    if os.path.exists('login.config'):
+        print "login.config exist"
+        cf = ConfigParser()
+        cf.read("login.config")
+        user_id = cf.get("account", "name")
+        pwd = cf.get("account", "passwd")
+    else:
+        user_id = ''
+        pwd = ''
+        print "no login.config file"
+        
     poj = POJ(user_id,pwd)
     q_list = list()
-    ID=0
-    NAME=0
-    PER=0
-    AC=0
-    TOTAL=0
-    LAST_UPDATE=0
-    #poj.login()
-#         if poj.submit(pid,lang,src):
-#             logging.info('getting result')
-#             status = poj.result(user_id)
-#             while status!=True:  
-#                 status = poj.result(user_id)
+
     page = 0
     while 1:
         page += 1
@@ -184,25 +153,23 @@ if __name__=='__main__':
                 AC = 100
                 TOTAL = 200
                 LAST_UPDATE='2015-12-24'
-            
-                
-            #print "%.2f%%" %(PER*100)
             q_list.append(Question(ID,NAME,PER,AC,TOTAL,LAST_UPDATE,page))
         sleep(1)
         #break
-#     new_q = Question(21, "a加3","324%", "234234", "1234245", "2015-12-24")
-#     q_list = list()
-#     q_list.append(new_q)
-#     new_q = Question(2, "a加b2","324%", "234234", "1234245", "2015-12-24")
-#     q_list.append(new_q)
-#     new_q = Question(3000, "a加b","55%", "234234", "1234245", "2015-12-24")
-#     q_list.append(new_q)
-# #    q_list.sort(lambda p1, p2:cmp(p1.id,p2.id))
     q_list.sort(key=lambda Question:Question.percent,reverse=1)
-#     for one in q_list:
-#         one.print_question()
-    save_result(q_list)
-    print"save result end!"
-#     q_list[0].print_question()
-#     q_list[1].print_question()
-#     q_list[2].print_question()
+    user_done_list = list();
+    str = poj.getUserState()
+    if(str.find("Sorry")>0):
+        print "no such user id: %s in POJ" %poj.user_id
+    else: 
+        index = str.find('p(')
+        if index > 0:
+            index += 2; #skip the first "p(id)"
+            while 1:
+                index = str.find('p(', index)
+                if index < 0:
+                    break
+                user_done_list.append(str[index+2:index+6])
+                index += 7
+
+    save_result(q_list,user_done_list)
